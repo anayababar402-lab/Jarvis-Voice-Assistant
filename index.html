@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Jarvis</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    color: white;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    text-align: center;
+  }
+  h1 { font-size: 2.5rem; margin-bottom: 5px; }
+  .status { font-size: 1.2rem; margin: 20px 0; opacity: 0.9; }
+  button {
+    background: #00d4ff;
+    color: #000;
+    border: none;
+    padding: 18px 40px;
+    font-size: 1.3rem;
+    border-radius: 50px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 20px #00d4ff;
+    transition: 0.2s;
+  }
+  button:active { transform: scale(0.95); }
+  button.listening {
+    background: #ff3b30;
+    box-shadow: 0 0 20px #ff3b30;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,59,48,0.7); }
+    70% { box-shadow: 0 0 0 20px rgba(255,59,48,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,59,48,0); }
+  }
+  #log {
+    margin-top: 30px;
+    max-width: 500px;
+    width: 100%;
+    background: rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 15px;
+    min-height: 120px;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+  .you { color: #00d4ff; }
+  .jarvis { color: #ffd700; }
+</style>
+</head>
+<body>
+
+<h1>JARVIS</h1>
+<p>Tap the button and talk</p>
+
+<div class="status" id="status">Ready</div>
+<button id="micBtn" onclick="toggleListen()">🎤 Talk to Jarvis</button>
+
+<div id="log"></div>
+
+<script>
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const synth = window.speechSynthesis;
+
+if (!SpeechRecognition) {
+  document.getElementById('status').textContent = "Speech recognition not supported on this browser. Use Chrome.";
+}
+
+let recognition;
+let isListening = false;
+
+function speak(text) {
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 1;
+  utter.pitch = 1;
+  synth.speak(utter);
+  addLog("Jarvis", text);
+}
+
+function addLog(who, text) {
+  const log = document.getElementById('log');
+  const p = document.createElement('p');
+  p.innerHTML = `<strong class="${who.toLowerCase()}">${who}:</strong> ${text}`;
+  log.appendChild(p);
+  log.scrollTop = log.scrollHeight;
+}
+
+function processCommand(command) {
+  command = command.toLowerCase().trim();
+
+  if (command.includes("time")) {
+    const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    return `The time is ${time}.`;
+  }
+  if (command.includes("date") || command.includes("today")) {
+    const date = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    return `Today is ${date}.`;
+  }
+  if (command.includes("youtube")) {
+    window.open("https://www.youtube.com", "_blank");
+    return "Opening YouTube.";
+  }
+  if (command.includes("google")) {
+    window.open("https://www.google.com", "_blank");
+    return "Opening Google.";
+  }
+  if (command.includes("email") || command.includes("mail")) {
+    const myEmail = "anayababar402@gmail.com"; 
+    const subject = "Message from Jarvis";
+    const body = "Hello, Jarvis has sent this email for you.";
+    window.location.href = `mailto:${myEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    return "Opening your email app to send a message.";
+  }
+  if (command.includes("joke") || command.includes("funny")) {
+    const jokes = [
+      "Why don’t scientists trust atoms? Because they make up everything.",
+      "Why did the computer go to the doctor? It had a virus.",
+      "What do you call a fake noodle? An impasta!"
+    ];
+    return jokes[Math.floor(Math.random() * jokes.length)];
+  }
+  if (command.includes("hello") || command.includes("hi") || command.includes("hey")) {
+    return "Hello. How can I help you?";
+  }
+  if (command.includes("bye") || command.includes("goodbye") || command.includes("stop")) {
+    return "Goodbye. Talk to you later.";
+  }
+
+  return "I can tell you the time, date, open YouTube or Google, send an email, or tell a joke. What would you like?";
+}
+
+function startListening() {
+  if (!SpeechRecognition) return;
+
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById('micBtn').classList.add('listening');
+    document.getElementById('micBtn').textContent = "🔴 Listening...";
+    document.getElementById('status').textContent = "Listening...";
+  };
+
+  recognition.onresult = (event) => {
+    const command = event.results[0][0].transcript;
+    addLog("You", command);
+    const reply = processCommand(command);
+    speak(reply);
+  };
+
+  recognition.onerror = (event) => {
+    document.getElementById('status').textContent = "Error: " + event.error;
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    document.getElementById('micBtn').classList.remove('listening');
+    document.getElementById('micBtn').textContent = "🎤 Talk to Jarvis";
+    document.getElementById('status').textContent = "Ready";
+  };
+
+  recognition.start();
+}
+
+function toggleListen() {
+  if (isListening) {
+    recognition.stop();
+  } else {
+    startListening();
+  }
+}
+
+window.onload = () => {
+  setTimeout(() => speak("Jarvis online. Tap the button and talk to me."), 500);
+};
+</script>
+
+</body>
+  </html>
